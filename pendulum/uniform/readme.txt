@@ -1,0 +1,1 @@
+Experiment using radbasfunctions that take in both state variables. Trajectory dataset
