@@ -8,18 +8,22 @@ import matplotlib.pyplot as plt
 import os
 from scipy.spatial import ConvexHull, Delaunay
 import itertools
-import csv
+import pickle
+import helpers.learn_modules as lm
+from helpers.networkarch import NeuralNetwork
+import torch
 # %% functions
 
 DEBUG = True
 VISUALIZE_TREE = False
 FailedIDs = []
 class DataGraph(object):
-	def __init__(self, xt, xtp1):
+	def __init__(self, xt, xtp1, func_size):
 		self.xt = xt
 		self.xtp1 = xtp1
 		self.sorted_lists = []
 		self.dim = len(self.xt[0])
+		self.func_size = funcs_size
 		self.node_list, self.triangles = self.create_graph()
 
 	def create_graph(self):
@@ -32,8 +36,15 @@ class DataGraph(object):
 
 		#Create graph using Delaunay Triangles
 		triangles = Delaunay(self.xt)
+		print("Completed graph building")
+		n_t = len(triangles.simplices)
+		t = 0
 		for simplex in triangles.simplices:
+			if t%1000 ==0:
+				print(str(t) + '/' + str(n_t) + ' triangles computed')
+			t += 1
 			try:
+
 				points = []
 				# print('Simplex: ' + str(*simplex))
 				points.extend(self.xt[simplex])
@@ -44,10 +55,10 @@ class DataGraph(object):
 					node_list[simplex[i]].vol = node_list[simplex[i]].vol + ch.volume/len(simplex)
 			except:
 				if DEBUG:
+					print("Failed on: " + str(simplex))
 					global FailedIDs
 					FailedIDs.append(simplex)
-
-		print("Completed graph building")
+		print("Completed volume calculations")
 		return node_list, triangles
 
 	def connect_up(self, node1, node2, dim):
@@ -64,12 +75,10 @@ class DataGraph(object):
 
 	def calc_DE(self):
 		#set Q and R sizes
-		self.Q = np.zeros([len(self.params)+self.dim-1, len(self.params)+self.dim-1])
-		self.R = np.zeros([len(self.params)+self.dim-1, len(self.params)+self.dim-1])
+		self.Q = np.zeros([self.func_size, self.func_size])
+		self.R = np.zeros([self.func_size, self.func_size])
 
 		n = len(self.node_list)
-		min_vol = 100000
-		max_vol = 0
 		for k in reversed(range(len(self.node_list))):
 			"""
 			This calculation is for A=QR-1.
@@ -78,17 +87,10 @@ class DataGraph(object):
 			if (n-k)%1000 == 0:
 				print(f"This is #{(n-k)}/{n}th loop")
 			node = self.node_list[k]
-			if node.vol < min_vol:
-				min_vol = node.vol
-			if node.vol > max_vol:
-				max_vol = node.vol
 			node.calc_RQ()
 			self.Q = self.Q + node.Q
 			self.R = self.R + node.R
 			del self.node_list[k]
-		print(max_vol)
-		print(min_vol)
-
 		self.A = self.Q@np.linalg.pinv(self.R)
 		return self.A
 
@@ -136,91 +138,75 @@ class Node(object):
 			self.Q =  dot_product(self.gFx.getH(), self.gx)* self.vol
 
 
-		
-def RBF(x, c, epsilon, kinds="gauss"):
-	# print('x:' + str(x))
-	# print('c:' + str(c))
-	# print('e:' + str(epsilon))
-
-	r = np.linalg.norm(x - c)
-	# print('r:' + str(r))
-	if kinds == "gauss":
-		return exp(-(epsilon*r)**2)
-	elif kinds == "quad":
-		return 1/(1+(epsilon*r)**2)
-	else:
-		pass
 
 def identity(x,arg):
 	#dummy function to be used as input to tree
 	return x
-
+def nn_out(x,model):
+	#dummy function to be used as input to tree
+	xt = torch.tensor(x[0:N_states]).type(dtype)
+	return model.g(xt).detach().numpy()
 def dot_product(x, y):
 	return np.dot(x, y)
 
 if __name__ =="__main__":
+	dtype = torch.float
 
-	f = open('q.csv', 'w')
-	writer = csv.writer(f, delimiter =',')
-	n_c = 7 #Number of different centers per axis used in creating grid of rbfs
-	N_states = 2
-	datasizes = [200,300,500,600,800,1000,1500,2500,5000]#,10000,25000]
-	for dsize in datasizes:
-		print('Modeling for: ', dsize)
-		d_t = pd.read_csv('./data/agg_t_'+str(dsize)+ '.csv', header=None)
-		d_t1 = pd.read_csv('./data/agg_t1_'+str(dsize)+ '.csv', header=None)
-		data_t = d_t.values
-		data_t1 = d_t1.values
-		data = {'x': {
-			'minus': data_t,
-			'plus': data_t1
-		}}
-		x_minus = data['x'  ]['minus']
-		x_plus  = data['x'  ]['plus' ]
-
+	N_states = 6
+	n_c = 40 #Number of different centers per axis used in creating grid of rbfs
+	func_size = N_states + n_c
+	model = NeuralNetwork(N_x = 6, N_e = n_c)
+	checkpoint_stab = torch.load('model.pt')
+	model.load_state_dict(checkpoint_stab['model_dict'])
+	d_t = pd.read_csv('./data/agg_t.csv', header=None)
+	d_t1 = pd.read_csv('./data/agg_t1.csv', header=None)
+	data_t = d_t.values
+	data_t1 = d_t1.values
+	data = {'x': {
+		'minus': data_t,
+		'plus': data_t1
+	}}
+	x_minus = data['x'  ]['minus']
+	x_plus  = data['x'  ]['plus' ]
+	if os.path.exists('datagraph.obj'):
+		filename = open('datagraph.obj','rb')
+		graph = pickle.load(filename)
+	else:
+		filename = open('datagraph.obj','wb')
 		graph = DataGraph(x_minus, x_plus)
+		pickle.dump(graph, filename)
 		if DEBUG:
 			# print(FailedIDs)
 			print('Number of Failed Nodes: ' + str(len(FailedIDs)))
 
-		if VISUALIZE_TREE:
-			tri = graph.triangles
-			points = graph.xt
-			plt.triplot(points[:,0], points[:,1], tri.simplices)
-			# plt.plot(points[:,0], points[:,1], 'o')
-			plt.show()
-			
-		rbf_min = np.ndarray.min(x_minus,0)
-		rbf_max = np.ndarray.max(x_minus,0)
-		rbf_c1 = np.linspace(rbf_min[0], rbf_max[0], n_c, dtype="float64")
-		rbf_c2 = np.linspace(rbf_min[1], rbf_max[1], n_c, dtype="float64")
-		rbf_c = np.array(np.meshgrid(rbf_c1, rbf_c2)).T.reshape(-1, N_states)
+	if VISUALIZE_TREE:
+		tri = graph.triangles
+		points = graph.xt
+		plt.triplot(points[:,0], points[:,1], tri.simplices)
+		# plt.plot(points[:,0], points[:,1], 'o')
+		plt.show()
+		
+	graph.func_size = func_size
+	g = []
+	g_t1 = []
+	func_list = []
+	param_list = []
+	func_list.append(identity)
+	param_list.append([None])
 
-		rbf_dilation = np.ones(rbf_c.shape,dtype="float64")
-		g = []
-		g_t1 = []
-		func_list = []
-		param_list = []
-		func_list.append(identity)
-		param_list.append([None])
-		for j in range(0, len(rbf_c)):
-			func_list.append(RBF)
-			param = [rbf_c[j,:], rbf_dilation[j,0]]
-			param_list.append(param)
+	func_list.append(nn_out)
+	param_list.append([model])
 
-		graph.set_funcs(func_list, param_list)
-		A = graph.calc_DE()
+	graph.set_funcs(func_list, param_list)
+	A = graph.calc_DE()
 
-		# # for node in tree.node_list:
-		# # 	print('id :' + str(node.id))
-		# # 	print('xt: ' + str(node.xt))
-		# # 	print('xtp1: ' + str(node.xtp1))
+	# # for node in tree.node_list:
+	# # 	print('id :' + str(node.id))
+	# # 	print('xt: ' + str(node.xt))
+	# # 	print('xtp1: ' + str(node.xtp1))
 
-		qarr = [dsize, graph.Q[0,0], graph.Q[3,3],graph.Q[5,5], graph.Q[13,13]]
-		writer.writerow(qarr)
 
-		qr_str = './models/qr' + str(n_c) +'_' + str(dsize)+ '.csv'
-		np.savetxt(qr_str, A, delimiter=",")
 
-	f.close()
+	qr_str = './dmdmodels/qr' + str(n_c) +'.csv'
+	np.savetxt(qr_str, A, delimiter=",")
 

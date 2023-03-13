@@ -1,0 +1,43 @@
+% Scan of initial conditions that determines the initial conditions that
+% have stable and unstable trajectories.
+
+x1 = linspace(-5,5,25);
+x2 = linspace(-5,5,25);
+tspan = [0 10];
+X = [];
+boolArr = [];
+
+%stable fixed
+x1s = 1 + sqrt(19)/3;
+y1s = -11/9 - 2/9*sqrt(19);
+x2s = 1 - sqrt(19)/3;
+y2s = -11/9 + 2/9*sqrt(19);
+%unstable
+x3u = 2/3;
+y3u = 1;
+%saddle
+x4s = 0;
+y4s = 0;
+for i=1:length(x1)
+   for j = 1:length(x2)
+       x0 = [x1(i), x2(j)];
+       [t,x_o] = ode45(@(t,x)twoord(t,x),tspan, x0);
+       X = [X; x0];
+       xend = x_o(end,:);
+       %process x trajectory
+       %check if part of stable spiral
+       a1 = 1 - sqrt(19)/3;
+       b1 = -11/9 + 2/9*sqrt(19);
+       a2 = 1 + sqrt(19)/3;
+       b2 = -11/9 - 2/9*sqrt(19);
+       if abs(xend(1) - x1s) > abs(x0(1)) & abs(xend(2)) > abs(x0(2))
+           staBool = false;
+       else
+           staBool = true;
+       end
+       
+       boolArr = [boolArr; staBool];
+   end
+end
+
+save('ICs.mat', 'boolArr', 'X');
