@@ -4,7 +4,7 @@ This repository contains the source code for the paper "Data-Driven Encoding: A 
 
 The pendulum folder corresponds to a physical system represented below:
 
-[pendulum] (images/pendulum.png)
+![pendulum](images/pendulum.png)
 
 In the pendulum folder, there are three subfolders, each pertaining to different data distributions mentioned in the paper. These folders are:
 - `gaussian`: This folder contains the data for the truncated Gaussian distribution.
@@ -13,7 +13,7 @@ In the pendulum folder, there are three subfolders, each pertaining to different
 
 The winchbot folder corresponds to the physical system represented below:
 
-[winchbot] (images/winch.png)
+![winchbot](images/winch.png)
 
 In the data distribution folders and in the `winchbot` folder, there are a few common scripts. These scripts include:
 
