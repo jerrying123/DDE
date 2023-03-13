@@ -4,7 +4,7 @@ This repository contains the source code for the paper "Data-Driven Encoding: A 
 
 The pendulum folder corresponds to a physical system represented below:
 
-![pendulum](./Images/pendulum.png)
+![pendulum](https://github.com/jerrying123/DDE/blob/main/Images/pendulum.png)
 
 In the pendulum folder, there are three subfolders, each pertaining to different data distributions mentioned in the paper. These folders are:
 - `gaussian`: This folder contains the data for the truncated Gaussian distribution.
