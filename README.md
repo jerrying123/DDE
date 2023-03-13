@@ -4,7 +4,7 @@ This repository contains the source code for the paper "Data-Driven Encoding: A 
 
 The pendulum folder corresponds to a physical system represented below:
 
-![pendulum](images/pendulum.png)
+![pendulum](Images/pendulum.png)
 
 In the pendulum folder, there are three subfolders, each pertaining to different data distributions mentioned in the paper. These folders are:
 - `gaussian`: This folder contains the data for the truncated Gaussian distribution.
@@ -13,7 +13,7 @@ In the pendulum folder, there are three subfolders, each pertaining to different
 
 The winchbot folder corresponds to the physical system represented below:
 
-![winchbot](images/winch.png)
+![winchbot](Images/winch.png)
 
 In the data distribution folders and in the `winchbot` folder, there are a few common scripts. These scripts include:
 
@@ -23,13 +23,13 @@ In the data distribution folders and in the `winchbot` folder, there are a few c
 
 # Additional Results
 
-The `images` folder contains additional results pertaining to the winchbot experiment, corresponding to Section V of the paper. These results include:
+The `Images` folder contains additional results pertaining to the winchbot experiment, corresponding to Section V of the paper. These results include:
 
-![sse](images/sse_nolog.png)
+![sse](Images/sse_nolog.png)
 
 which is a plot of the sum of squared errors for 25 trajectories comparing both Koopman models.
 
-![sse](images/traj_y.png)
+![sse](Images/traj_y.png)
 
 which is a plot of the y position of the winchbot for a single trajectory comparing both Koopman models.
 
